@@ -1013,7 +1013,9 @@ class FailoverEventsService(Service):
     def start_virt(self):
         logger.info('Going to initialize virt plugin')
         job = self.run_call('virt.global.setup')
+        logger.info('have virt setup job')
         job.wait_sync(timeout=10)
+        logger.info('waited for virt setup job')
         if job.error:
             logger.info('Failed to setup virtualization: %r', job.error)
         else:
@@ -1022,6 +1024,7 @@ class FailoverEventsService(Service):
                 logger.info('Virtualization initalized.')
             elif config['state'] != VirtStatus.NO_POOL.value:
                 logger.warning('Virtualization failed to initialize with state %r.', config['state'])
+            logger.info('virt config state is %r', config.get('state'))
 
     def stop_virt(self):
         logger.info('Going to stop virt plugin')

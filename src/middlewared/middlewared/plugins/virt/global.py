@@ -208,20 +208,26 @@ class VirtGlobalService(ConfigService):
         Sets up incus through their API.
         Will create necessary storage datasets if required.
         """
+        self.logger.debug('virt.global.setup starting')
         try:
             await self.middleware.call('cache.put', 'VIRT_STATE', Status.INITIALIZING.value)
             await self._setup_impl()
         except NoPoolConfigured:
+            self.logger.debug('virt.global.setup NoPoolConfigured')
             await self.middleware.call('cache.put', 'VIRT_STATE', Status.NO_POOL.value)
         except LockedDataset:
+            self.logger.debug('virt.global.setup LockedDataset')
             await self.middleware.call('cache.put', 'VIRT_STATE', Status.LOCKED.value)
         except Exception:
+            self.logger.debug('virt.global.setup Exception')
             await self.middleware.call('cache.put', 'VIRT_STATE', Status.ERROR.value)
             raise
         else:
+            self.logger.debug('virt.global.setup INITIALIZED')
             await self.middleware.call('cache.put', 'VIRT_STATE', Status.INITIALIZED.value)
         finally:
             self.middleware.send_event('virt.global.config', 'CHANGED', fields=await self.config())
+        self.logger.debug('virt.global.setup DONE')
 
     async def _setup_impl(self):
         config = await self.config()
