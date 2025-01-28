@@ -16,6 +16,8 @@ AMD_PREFER_TDIE = (
     'AMD Ryzen Threadripper 29',
 )
 RE_CORE = re.compile(r'^Core ([0-9]+)$')
+RE_CORE_ID = re.compile(r'^core id\s+: (\d+)$')
+RE_PROCESSOR = re.compile(r'^processor\s*:\s*(\d+)')
 
 
 class CpuInfo(typing.TypedDict):
@@ -98,3 +100,33 @@ def amd_cpu_temperatures(amd_metrics: dict) -> dict:
             return dict(enumerate([amd_sensors['temp1']] * core_count))
         elif 'temp1_input' in amd_sensors['temp1']:
             return dict(enumerate([amd_sensors['temp1']['temp1_input']] * core_count))
+
+
+def get_threads_to_physical_cores_mapping():
+    """
+    Parses /proc/cpuinfo and returns a mapping of physical cores to their logical threads.
+
+    Returns:
+        dict[str, list[str]]: A dictionary mapping physical core IDs to lists of logical thread IDs.
+    """
+    # This is inspired from https://unix.stackexchange.com/questions/400605/understanding-core-ids
+    threads_to_pcores_mapping = collections.defaultdict(list)
+
+    with open('/proc/cpuinfo', 'r') as r:
+        cpu_blocks = r.read().strip().split('\n\n')  # Splitting based on double newlines (per CPU block)
+
+    for cpu_block in cpu_blocks:
+        processor_id = None
+        core_id = None
+
+        for line in cpu_block.splitlines():
+            if match := RE_PROCESSOR.match(line):
+                processor_id = match.group(1)
+            elif match := RE_CORE_ID.match(line):
+                core_id = match.group(1)
+
+        # Ensure valid data is collected before adding to mapping
+        if processor_id is not None and core_id is not None and processor_id != core_id:
+            threads_to_pcores_mapping[f'cpu{core_id}'].append(processor_id)
+
+    return dict(threads_to_pcores_mapping)

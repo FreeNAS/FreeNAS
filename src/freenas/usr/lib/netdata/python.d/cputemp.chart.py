@@ -3,8 +3,9 @@ from collections import defaultdict
 from copy import deepcopy
 from third_party import lm_sensors as sensors
 
-from middlewared.utils.cpu import amd_cpu_temperatures, generic_cpu_temperatures, cpu_info
-
+from middlewared.utils.cpu import (
+    amd_cpu_temperatures, cpu_info, generic_cpu_temperatures, get_threads_to_physical_cores_mapping,
+)
 
 CPU_TEMPERATURE_FEAT_TYPE = 2
 
@@ -22,6 +23,15 @@ CHARTS = {
 }
 
 
+def get_vcores_temp(data, threads_to_pcores_mapping):
+    vcores_temp = {}
+    for pcore, temp in data.items():
+        vcores_temp.update({
+            f'cpu{vcore}': temp for vcore in threads_to_pcores_mapping.get(pcore, [])
+        })
+    return vcores_temp
+
+
 def cpu_temperatures(cpu_metrics):
     if amd_metrics := cpu_metrics.get('k10temp-pci-00c3'):
         return amd_cpu_temperatures(amd_metrics)
@@ -33,6 +43,7 @@ class Service(SimpleService):
         SimpleService.__init__(self, configuration=configuration, name=name)
         self.order = deepcopy(ORDER)
         self.definitions = deepcopy(CHARTS)
+        self.threads_to_pcores_mapping = {}
 
     def get_data(self):
         seen, data, cpu_data = dict(), dict(), defaultdict(dict)
@@ -83,6 +94,7 @@ class Service(SimpleService):
 
         if total_temp:
             data['cpu'] = total_temp / len(data.keys())
+            data.update(get_vcores_temp(data, self.threads_to_pcores_mapping))
         return data or ({f'cpu{i}': 0 for i in range(cpu_info()['core_count'])} | {'cpu': 0})
 
     def check(self):
@@ -91,7 +103,7 @@ class Service(SimpleService):
         except sensors.SensorsError as error:
             self.error(error)
             return False
-
+        self.threads_to_pcores_mapping = get_threads_to_physical_cores_mapping()
         data = self.get_data()
         for i in data:
             self.definitions['temperatures']['lines'].append([str(i)])
