@@ -12,7 +12,7 @@ from auto_config import ha, pool_name
 from protocols import iscsi_scsi_connection
 
 from middlewared.test.integration.assets.hostkvm import get_kvm_domain, poweroff_vm, reset_vm, start_vm
-from middlewared.test.integration.utils import call
+from middlewared.test.integration.utils import call, ssh
 from middlewared.test.integration.utils.client import truenas_server
 
 pytestmark = pytest.mark.skipif(not ha, reason='Tests applicable to HA only')
@@ -467,6 +467,7 @@ class TestFixtureConfiguredALUA:
         # Shutdown the current MASTER.
         if self.VERBOSE:
             print('Node = ', node)
+            ssh('sync')
             print('Powering off VM', domain)
         poweroff_vm(domain)
         sleep(10)
