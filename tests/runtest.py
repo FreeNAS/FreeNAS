@@ -299,6 +299,7 @@ pytest_command = [
     '--timeout=300',
     "--junitxml",
     'results/api_v2_tests_result.xml',
+    '-s',
 ]
 if testexpr:
     pytest_command.extend(['-k', testexpr])

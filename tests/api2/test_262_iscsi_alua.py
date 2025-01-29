@@ -462,12 +462,14 @@ class TestFixtureConfiguredALUA:
         """
         node = fix_get_domain['node']
         domain = fix_get_domain['domain']
+        self.VERBOSE = True
 
         # Shutdown the current MASTER.
         if self.VERBOSE:
+            print('Node = ', node)
             print('Powering off VM', domain)
         poweroff_vm(domain)
-        sleep(3)
+        sleep(10)
 
         # Wait for the new MASTER to come up
         newnode = self.wait_for_new_master(node)
