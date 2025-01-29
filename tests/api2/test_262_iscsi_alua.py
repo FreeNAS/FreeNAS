@@ -366,7 +366,7 @@ class TestFixtureConfiguredALUA:
     def write_patterns(self, ip, config):
         def write_pattern(s, target_num, lun, lun_config):
             s.writesame16(1, 2, self.page_pattern(target_num, lun))
-            s.synchronizecache10(1, 2)
+            s.synchronizecache10(0, self.BLOCKS)
         self.visit_luns(ip, config, write_pattern)
 
     def check_patterns(self, ip, config):
@@ -390,6 +390,7 @@ class TestFixtureConfiguredALUA:
         if self.VERBOSE:
             print('Wrote LUN patterns')
 
+        self.VERBOSE = True
         # Check that the LUNs have the correct patterns
         if self.VERBOSE:
             print('Validate data pattern seen by Node A...')
@@ -474,6 +475,9 @@ class TestFixtureConfiguredALUA:
 
         # Wait for the new MASTER to come up
         newnode = self.wait_for_new_master(node)
+        if self.VERBOSE:
+            print('Dropping cache on node', newnode)
+        ssh('echo 3 > /proc/sys/vm/drop_caches')
 
         # Wait for the failover event to complete
         self.wait_for_failover_in_progress()
@@ -485,10 +489,10 @@ class TestFixtureConfiguredALUA:
             new_ip = truenas_server.nodeb_ip
 
         if self.VERBOSE:
-            print(f'Validate shape seen by Node {newnode}...')
+            print(f'Validate shape seen by Node {newnode}...{new_ip}')
         self.validate_shape(new_ip, fix_write_patterns, 0)
         if self.VERBOSE:
-            print(f'Validate data pattern seen by Node {newnode}...')
+            print(f'Validate data pattern seen by Node {newnode}...{new_ip}')
         self.check_patterns(new_ip, fix_write_patterns)
 
     @pytest.mark.timeout(900)
