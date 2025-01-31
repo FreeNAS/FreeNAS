@@ -41,25 +41,14 @@ class _BaseModelMetaclass(ModelMetaclass):
     # `_NotRequiredMixin`, and `NotRequired` at that time.
 
     def __new__(mcls, name, bases, namespaces, **kwargs):
-        skip_patching = kwargs.pop("__BaseModelMetaclass_skip_patching", False)
-
         cls = super().__new__(mcls, name, bases, namespaces, **kwargs)
 
-        if skip_patching or name == "BaseModel":
+        if name == "BaseModel":
             return cls
 
         for field in cls.model_fields.values():
             if getattr(field, "default", None) is undefined:
-                return create_model(
-                    cls.__name__,
-                    __base__=(cls, _NotRequiredMixin),
-                    __module__=cls.__module__,
-                    __cls_kwargs__={"__BaseModelMetaclass_skip_patching": True},
-                    **{
-                        k: (v.annotation, v)
-                        for k, v in cls.model_fields.items()
-                    }
-                )
+                return super().__new__(mcls, name, (*bases, _NotRequiredMixin), namespaces, **kwargs)
         else:
             return cls
 
